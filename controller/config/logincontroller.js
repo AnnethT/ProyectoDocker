@@ -8,41 +8,42 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const JWT_SECRET =  process.env.JWT_SECRET || "mi_clave_supersecreta";
 
-
-passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "/auth/google/callback"
-  },
-  async (accessToken, refreshToken, profile, done) => {
-    try {
-      
-      const [results] = await db.query('SELECT * FROM usuarios WHERE correo = ?', [profile.emails[0].value]);
-      
-      if (results.length > 0) {
-        return done(null, results[0]);
-      } else {
-        
-        const newUser = {
-          nombre: profile.displayName,
-          correo: profile.emails[0].value,
-          contraseña: await bcrypt.hash(Math.random().toString(36).slice(-8), 10),
-          foto_perfil: profile.photos[0].value
-        };
-        
-        const [insertResult] = await db.query(
-          'INSERT INTO usuarios (nombre, correo, contraseña, foto_perfil) VALUES (?, ?, ?, ?)',
-          [newUser.nombre, newUser.correo, newUser.contraseña, newUser.foto_perfil]
-        );
-        
-        newUser.id_usuario = insertResult.insertId;
-        return done(null, newUser);
+if (process.env.NODE_ENV !== "test") {
+    passport.use(new GoogleStrategy({
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL: "/auth/google/callback"
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        try {
+          const [results] = await db.query('SELECT * FROM usuarios WHERE correo = ?', [profile.emails[0].value]);
+          
+          if (results.length > 0) {
+            return done(null, results[0]);
+          } else {
+            const newUser = {
+              nombre: profile.displayName,
+              correo: profile.emails[0].value,
+              contraseña: await bcrypt.hash(Math.random().toString(36).slice(-8), 10),
+              foto_perfil: profile.photos[0].value
+            };
+            
+            const [insertResult] = await db.query(
+              'INSERT INTO usuarios (nombre, correo, contraseña, foto_perfil) VALUES (?, ?, ?, ?)',
+              [newUser.nombre, newUser.correo, newUser.contraseña, newUser.foto_perfil]
+            );
+            
+            newUser.id_usuario = insertResult.insertId;
+            return done(null, newUser);
+          }
+        } catch (error) {
+          return done(error, null);
+        }
       }
-    } catch (error) {
-      return done(error, null);
-    }
-  }
-));
+    ));
+} else {
+    console.log("🔕 Google OAuth desactivado en entorno de test");
+}
 
 
 passport.serializeUser((user, done) => {
