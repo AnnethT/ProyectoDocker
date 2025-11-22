@@ -221,3 +221,6 @@ router.delete('/clear', verifyToken , async (req, res) => {
 });
 
 module.exports = router;
+
+
+///Nota para realizar un commit y ver que se suben los cambios 
